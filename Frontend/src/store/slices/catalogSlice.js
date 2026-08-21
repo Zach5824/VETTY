@@ -43,7 +43,6 @@ const catalogSlice = createSlice({
     },
   },
 });
-
 export const {
   addProduct, updateProduct, deleteProduct, decrementStock,
   setThreshold, addService, deleteService, addZone,

@@ -62,7 +62,6 @@ const ordersSlice = createSlice({
     },
   },
 });
-
 export const {
   placeOrder, placeBooking, approveOrder, rejectOrder,
   approveBooking, rejectBooking, submitReview, setSelectedOrder,

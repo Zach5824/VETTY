@@ -6,6 +6,7 @@ import ordersReducer from "./slices/ordersSlice";
 import checkoutReducer from "./slices/checkoutSlice";
 import uiReducer from "./slices/uiSlice";
 
+
 export const store = configureStore({
   reducer: {
     auth: authReducer,

@@ -11,26 +11,19 @@ import { C, GRADIENT, serif } from "../../theme/colors";
 export default function Home() {
   const navigate = useNavigate();
   const products = useSelector((s) => s.catalog.products);
-  const cartCount = useSelector((s) => s.cart.items.length);
   const featured = products.slice(0, 2);
 
   return (
     <div className="h-full flex flex-col">
       <div className="overflow-y-auto flex-1">
-        <div style={{ background: GRADIENT }} className="px-6 pt-6 pb-8 relative overflow-hidden">
+        <div className="px-6 pt-6 pb-8 relative overflow-hidden" style={{ background: GRADIENT }}>
+          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=1800&q=85')" }} />
+          <div className="absolute inset-0" style={{ background: "linear-gradient(115deg, rgba(7, 81, 127, 0.96), rgba(20, 112, 170, 0.84))" }} />
           <div className="absolute rounded-full" style={{ width: 220, height: 220, background: "rgba(255,255,255,0.08)", top: -80, right: -60, filter: "blur(10px)" }} />
-          <div className="content-container flex items-center justify-between mb-6 relative">
+          <div className="content-container mb-6 relative">
             <h1 className="text-xl font-bold text-white" style={{ fontFamily: serif }}>Vetty<span style={{ color: C.gold }}>.</span></h1>
-            <button onClick={() => navigate("/cart")} className="relative">
-              <ShoppingBag size={20} color="#fff" />
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold" style={{ background: C.gold, color: C.maroonDark }}>
-                  {cartCount}
-                </span>
-              )}
-            </button>
           </div>
-          <div className="content-container">
+          <div className="content-container relative">
             <Badge color="rgba(7,81,127,0.48)" fg={C.gold}><PawPrint size={13} /> Nairobi's Trusted Pet Shop</Badge>
             <h2 className="text-3xl sm:text-4xl font-bold text-white mt-3 leading-tight" style={{ fontFamily: serif }}>
               Everything your<br /><span style={{ color: C.gold, fontStyle: "italic" }}>pet needs,</span><br />delivered fast.

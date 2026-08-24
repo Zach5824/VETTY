@@ -1,5 +1,6 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import Layout from "./components/Layout";
 
 import Splash from "./pages/customer/Splash";
@@ -26,6 +27,14 @@ import AdminRequests from "./pages/admin/AdminRequests";
 import AdminInventory from "./pages/admin/AdminInventory";
 import AdminZones from "./pages/admin/AdminZones";
 
+function RequireAdmin({ children }) {
+  const auth = useSelector((state) => state.auth);
+
+  return auth.loggedIn && auth.role === "admin"
+    ? children
+    : <Navigate to="/admin/login" replace />;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -49,11 +58,11 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
 
         <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/products" element={<AdminProducts />} />
-        <Route path="/admin/requests" element={<AdminRequests />} />
-        <Route path="/admin/inventory" element={<AdminInventory />} />
-        <Route path="/admin/zones" element={<AdminZones />} />
+        <Route path="/admin/dashboard" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
+        <Route path="/admin/products" element={<RequireAdmin><AdminProducts /></RequireAdmin>} />
+        <Route path="/admin/requests" element={<RequireAdmin><AdminRequests /></RequireAdmin>} />
+        <Route path="/admin/inventory" element={<RequireAdmin><AdminInventory /></RequireAdmin>} />
+        <Route path="/admin/zones" element={<RequireAdmin><AdminZones /></RequireAdmin>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

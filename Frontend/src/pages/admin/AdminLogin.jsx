@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { ShieldCheck } from "lucide-react";
@@ -10,10 +10,12 @@ import { GRADIENT, C, serif } from "../../theme/colors";
 export default function AdminLogin() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [email, setEmail] = useState("admin@vetty.co.ke");
+  const [password, setPassword] = useState("");
 
   const submit = (e) => {
     e.preventDefault();
-    dispatch(login({ role: "admin", name: "Admin" }));
+    dispatch(login({ role: "admin", name: email.split("@")[0] || "Admin" }));
     navigate("/admin/dashboard");
   };
 
@@ -23,8 +25,8 @@ export default function AdminLogin() {
       <p className="text-xs mt-2 mb-6" style={{ color: "#fff", opacity: 0.85 }}>Sign in to manage products, services, orders & reports.</p>
       <form onSubmit={submit} className="w-full max-w-xl rounded-3xl p-6 bg-white">
         <div className="flex flex-col gap-3">
-          <Field label="Admin email" value="admin@vetty.co.ke" onChange={() => {}} />
-          <Field label="Password" value="" onChange={() => {}} type="password" placeholder="••••••••" />
+          <Field label="Admin email" value={email} onChange={setEmail} type="email" placeholder="admin@vetty.co.ke" required />
+          <Field label="Password" value={password} onChange={setPassword} type="password" placeholder="••••••••" required />
           <Btn full type="submit">Secure Login</Btn>
           <p className="text-[10px] text-center flex items-center justify-center gap-1" style={{ color: C.gray }}><ShieldCheck size={11} /> Two-factor authentication enabled</p>
         </div>

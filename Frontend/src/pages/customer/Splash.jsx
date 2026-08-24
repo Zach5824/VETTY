@@ -12,6 +12,8 @@ export default function Splash() {
   return (
     <div className="h-full w-full overflow-y-auto" style={{ background: C.sectionBg }}>
       <section className="relative overflow-hidden px-6 py-8 sm:py-14" style={{ background: GRADIENT }}>
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=1800&q=85')" }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(115deg, rgba(7, 81, 127, 0.95), rgba(20, 112, 170, 0.82))" }} />
         <div className="absolute rounded-full opacity-10 bg-white -top-20 -right-16 w-72 h-72" />
         <div className="content-container relative text-center">
           <h1 className="text-4xl sm:text-5xl font-bold text-white" style={{ fontFamily: serif }}>Vetty<span style={{ color: C.gold }}>.</span></h1>

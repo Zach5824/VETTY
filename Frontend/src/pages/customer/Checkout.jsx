@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { Home as HomeIcon } from "lucide-react";
 import { setZone } from "../../store/slices/checkoutSlice";
-// Import your clearCart action here from your cart slice if available
-// import { clearCart } from "../../store/slices/cartSlice"; 
+
 import ScreenHeader from "../../components/ScreenHeader";
 import Btn from "../../components/Btn";
 import C from "../../theme/colors";
@@ -45,7 +44,7 @@ export default function Checkout() {
           ...(token && { Authorization: `Bearer ${token}` }),
         },
         body: JSON.stringify({
-          user_id: 1, // Optional fallback if route does not rely purely on JWT identity
+          user_id: 1, 
           total_amount: subtotal,
         }),
       });
@@ -56,10 +55,6 @@ export default function Checkout() {
         throw new Error(data.msg || "Failed to place order");
       }
 
-      // Optionally dispatch clearCart() here
-      // dispatch(clearCart());
-
-      // Redirect to Confirmation page with order details
       navigate("/confirmation", { state: { order: data } });
     } catch (err) {
       setError(err.message);

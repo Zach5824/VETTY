@@ -1,46 +1,103 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import React, { useEffect, useState } from "react";
+import { Clock, CheckCircle, Package } from "lucide-react";
 import ScreenHeader from "../../components/ScreenHeader";
-import Badge from "../../components/Badge";
-import BottomNav from "../../components/BottomNav";
-import { C, statusColor } from "../../theme/colors";
+import C from "../../theme/colors";
 
 export default function History() {
-  const orders = useSelector((s) => s.orders.orders);
-  const bookings = useSelector((s) => s.orders.bookings);
-  const navigate = useNavigate();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const all = [
-    ...orders.map((o) => ({ ...o, kindLabel: o.kind === "service" ? o.label : `${o.label} · KSh ${o.total.toLocaleString()}` })),
-    ...bookings.map((b) => ({ id: b.id, kindLabel: `${b.date}, ${b.time}`, status: b.status, total: b.price, label: b.serviceName })),
-  ];
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const token = localStorage.getItem("jwt_token");
+        const res = await fetch("http://127.0.0.1:5000/api/orders", {
+          headers: {
+            "Content-Type": "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.msg || "Failed to load order history");
+        }
+
+        setOrders(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
 
   return (
     <div className="h-full flex flex-col">
-      <ScreenHeader title="My Orders" backTo="/home" />
+      <ScreenHeader title="Order History" backTo="/" />
+
       <div className="content-container flex-1 overflow-y-auto px-5 py-3 flex flex-col gap-3">
-        {all.length === 0 && <p className="text-center text-sm py-10" style={{ color: C.gray }}>No orders yet.</p>}
-        {all.map((o) => {
-          const [bg, fg] = statusColor(o.status);
-          return (
-            <div key={o.id} className="p-4 rounded-2xl flex flex-col gap-2" style={{ border: `1px solid ${C.lightGray}` }}>
-              <div className="flex justify-between items-center">
-                <p className="text-sm font-bold" style={{ color: C.charcoal }}>#{o.id}</p>
-                <Badge color={bg} fg={fg}>{o.status}</Badge>
+        {loading && (
+          <p className="text-xs text-center text-gray-500 py-4">Loading your orders...</p>
+        )}
+
+        {error && (
+          <p className="text-xs text-center text-red-500 py-4">{error}</p>
+        )}
+
+        {!loading && !error && orders.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-10 gap-2">
+            <Package size={32} style={{ color: C.gray }} />
+            <p className="text-xs font-semibold" style={{ color: C.gray }}>
+              No past orders found.
+            </p>
+          </div>
+        )}
+
+        {!loading &&
+          !error &&
+          orders.map((order) => (
+            <div
+              key={order.id}
+              className="p-3.5 rounded-xl flex items-center justify-between border"
+              style={{ borderColor: "#eee", backgroundColor: "#fff" }}
+            >
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold" style={{ color: C.charcoal }}>
+                    Order #{order.id}
+                  </span>
+                  <span
+                    className="text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1"
+                    style={{
+                      backgroundColor: order.status === "completed" ? "#e6f4ea" : "#fff4e5",
+                      color: order.status === "completed" ? "#137333" : "#b06000",
+                    }}
+                  >
+                    {order.status === "completed" ? (
+                      <CheckCircle size={10} />
+                    ) : (
+                      <Clock size={10} />
+                    )}
+                    {order.status}
+                  </span>
+                </div>
+                <p className="text-[11px]" style={{ color: C.gray }}>
+                  {order.created_at}
+                </p>
               </div>
-              <p className="text-xs" style={{ color: C.gray }}>{o.kindLabel}</p>
-              <div className="flex justify-between items-center">
-                <button onClick={() => navigate(`/tracking/${o.id}`)} className="text-xs font-semibold" style={{ color: C.rose }}>View details →</button>
-                {o.status === "delivered" && (
-                  <button onClick={() => navigate(`/review/${o.id}`)} className="text-xs font-semibold" style={{ color: C.gold }}>Rate order</button>
-                )}
+
+              <div className="text-right">
+                <span className="text-xs font-bold" style={{ color: C.maroon }}>
+                  ${Number(order.total_amount).toFixed(2)}
+                </span>
               </div>
             </div>
-          );
-        })}
+          ))}
       </div>
-      <BottomNav />
     </div>
   );
 }

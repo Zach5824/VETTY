@@ -15,7 +15,7 @@ export default function AdminNav() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   return (
-    <div className="flex items-stretch justify-around sm:justify-center sm:gap-8 px-1 pt-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] border-t shrink-0" style={{ borderColor: C.lightGray, background: "#fff" }}>
+    <div className="mt-auto flex items-stretch justify-around sm:justify-center sm:gap-8 px-1 pt-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] border-t shrink-0" style={{ borderColor: C.lightGray, background: "#fff" }}>
       {items.map(([path, Icon, label]) => {
         const active = pathname === path;
         return (

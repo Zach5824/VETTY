@@ -26,8 +26,8 @@ export default function Splash() {
           </p>
           <div className="mt-7 w-full max-w-lg mx-auto flex flex-col sm:flex-row gap-3">
             <Btn full onClick={() => navigate("/login")}>Shop &amp; book services</Btn>
-            <Btn full variant="outlineLight" onClick={() => { dispatch(login({ role: "customer", name: "Guest" })); navigate("/home"); }}>
-              Continue as guest
+            <Btn full variant="outlineLight" onClick={() => navigate("/login")}>
+              Sign in to continue
             </Btn>
           </div>
         </div>

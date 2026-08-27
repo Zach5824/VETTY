@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { api } from "./lib/api";
+import { hydrateCatalog } from "./store/slices/catalogSlice";
 import Layout from "./components/Layout";
 
 import Splash from "./pages/customer/Splash";
@@ -36,6 +38,13 @@ function RequireAdmin({ children }) {
 }
 
 export default function App() {
+  const dispatch = useDispatch();
+  useEffect(() => {
+    Promise.all([api("/api/products"), api("/api/services"), api("/api/zones")])
+      .then(([products, services, zones]) => dispatch(hydrateCatalog({ products, services, zones })))
+      .catch(() => {}); // Seed data keeps the interface usable before the API is started.
+  }, [dispatch]);
+
   return (
     <Routes>
       <Route element={<Layout />}>

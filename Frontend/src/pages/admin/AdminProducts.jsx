@@ -54,7 +54,7 @@ export default function AdminProducts() {
         )}
         {products.map((p) => (
           <div key={p.id} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: C.sectionBg }}>
-            <ImgBox h={48} r={12} icon={p.icon} className="w-12" />
+            <ImgBox h={48} r={12} icon={p.icon} name={p.name} className="w-12" />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold truncate" style={{ color: C.charcoal }}>{p.name}</p>
               <p className="text-xs font-bold" style={{ color: C.maroon }}>KSh {p.price.toLocaleString()}</p>
@@ -70,7 +70,7 @@ export default function AdminProducts() {
         <p className="text-sm font-semibold mt-2" style={{ color: C.charcoal }}>Services</p>
         {services.map((s) => (
           <div key={s.id} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: C.sectionBg }}>
-            <ImgBox h={48} r={12} icon={s.icon} className="w-12" />
+            <ImgBox h={48} r={12} icon={s.icon} name={s.name} className="w-12" />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold truncate" style={{ color: C.charcoal }}>{s.name}</p>
               <p className="text-xs font-bold" style={{ color: C.maroon }}>KSh {s.price.toLocaleString()} · {s.duration}</p>

@@ -20,7 +20,7 @@ export default function ProductDetail() {
     <div className="h-full flex flex-col">
       <div className="overflow-y-auto flex-1">
         <div className="relative">
-          <ImgBox h={260} r={0} icon={product.icon} />
+          <ImgBox h={260} r={0} icon={product.icon} name={product.name} />
           <button onClick={() => navigate(-1)} className="absolute top-4 left-4 w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.9)" }}>
             <ChevronLeft size={18} color={C.charcoal} />
           </button>

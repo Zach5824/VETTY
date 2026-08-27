@@ -32,7 +32,7 @@ export default function Cart() {
         <div className="flex flex-col gap-3">
           {items.map((c) => (
             <div key={c.productId} className="flex items-center gap-3">
-              <ImgBox h={64} r={12} icon={c.product.icon} className="w-16" />
+              <ImgBox h={64} r={12} icon={c.product.icon} name={c.product.name} className="w-16" />
               <div className="flex-1">
                 <p className="text-sm font-semibold" style={{ color: C.charcoal }}>{c.product.name}</p>
                 <p className="text-sm font-bold" style={{ color: C.maroon }}>KSh {c.product.price.toLocaleString()}</p>

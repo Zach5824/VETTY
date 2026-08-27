@@ -41,10 +41,16 @@ const catalogSlice = createSlice({
     addZone(state, action) {
       state.zones.push({ id: "z" + nanoid(6), ...action.payload });
     },
+    hydrateCatalog(state, action) {
+      const { products, services, zones } = action.payload;
+      if (products?.length) state.products = products;
+      if (services?.length) state.services = services;
+      if (zones?.length) state.zones = zones;
+    },
   },
 });
 export const {
   addProduct, updateProduct, deleteProduct, decrementStock,
-  setThreshold, addService, deleteService, addZone,
+  setThreshold, addService, deleteService, addZone, hydrateCatalog,
 } = catalogSlice.actions;
 export default catalogSlice.reducer;

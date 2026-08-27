@@ -6,6 +6,7 @@ import ScreenHeader from "../../components/ScreenHeader";
 import Field from "../../components/Field";
 import Btn from "../../components/Btn";
 import { C } from "../../theme/colors";
+import { api } from "../../lib/api";
 
 const DAYS = ["Mon 12", "Tue 13", "Wed 14", "Thu 15", "Fri 16"];
 const TIMES = ["9:00 AM", "11:00 AM", "1:00 PM", "3:00 PM"];
@@ -21,15 +22,17 @@ export default function Booking() {
   const [time, setTime] = useState("11:00 AM");
   const [petName, setPetName] = useState("");
   const [notes, setNotes] = useState("");
+  const [error, setError] = useState("");
 
   if (!service) return <div className="p-6 text-sm">Service not found.</div>;
 
-  const confirm = () => {
-    dispatch(placeBooking({
-      serviceId: service.id, serviceName: service.name, petName: petName || "My pet",
-      date: DAYS[day], time, notes, price: service.price, customer: auth.name || "You",
-    }));
-    navigate("/confirmation");
+  const confirm = async () => {
+    try {
+      if (!auth.token) throw new Error("Please sign in to book an appointment.");
+      const booking = await api("/api/bookings", { token: auth.token, method: "POST", body: JSON.stringify({ service_id: service.id, pet_name: petName || "My pet", appointment_at: `${DAYS[day]} ${time}`, notes }) });
+      dispatch(placeBooking({ serviceId: service.id, serviceName: service.name, petName: booking.petName, date: DAYS[day], time, notes, price: service.price, customer: auth.name || "You" }));
+      navigate("/confirmation");
+    } catch (requestError) { setError(requestError.message); }
   };
 
   return (
@@ -63,6 +66,7 @@ export default function Booking() {
           <span className="text-sm" style={{ color: C.gray }}>Service fee</span>
           <span className="text-lg font-bold" style={{ color: C.maroon }}>KSh {service.price.toLocaleString()}</span>
         </div>
+        {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
       <div className="p-4 border-t" style={{ borderColor: C.lightGray }}>
         <Btn full onClick={confirm}>Confirm Booking</Btn>

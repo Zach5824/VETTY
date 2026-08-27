@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 
-APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
+APP_PATH = Path(__file__).resolve().parents[1] / "vetty_api.py"
 
 
 @pytest.fixture()
@@ -44,8 +44,15 @@ def response(payload):
 
 def customer_and_order(app):
     client = app.app.test_client()
-    login = client.post("/api/login", json={"username": "mpesa-test-customer"})
-    token = login.get_json()["access_token"]
+    signup = client.post(
+        "/api/auth/signup",
+        json={
+            "username": "mpesa-test-customer",
+            "email": "mpesa@example.test",
+            "password": "Password123!",
+        },
+    )
+    token = signup.get_json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     order = client.post("/api/orders", headers=headers, json={"total_amount": 1250}).get_json()
     return client, headers, order["id"]

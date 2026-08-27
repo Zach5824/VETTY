@@ -1,6 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const initialState = { loggedIn: false, role: null, name: "" }; // role: 'customer' | 'admin'
+const emptyState = { loggedIn: false, role: null, name: "", email: "", token: null };
+const initialState = JSON.parse(localStorage.getItem("vetty-session") || "null") || emptyState;
 
 const authSlice = createSlice({
   name: "auth",
@@ -10,9 +11,13 @@ const authSlice = createSlice({
       state.loggedIn = true;
       state.role = action.payload.role;
       state.name = action.payload.name;
+      state.email = action.payload.email || "";
+      state.token = action.payload.token || null;
+      localStorage.setItem("vetty-session", JSON.stringify(state));
     },
     logout() {
-      return initialState;
+      localStorage.removeItem("vetty-session");
+      return emptyState;
     },
   },
 });

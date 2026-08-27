@@ -6,17 +6,24 @@ import { login } from "../../store/slices/authSlice";
 import Field from "../../components/Field";
 import Btn from "../../components/Btn";
 import { GRADIENT, C, serif } from "../../theme/colors";
+import { api } from "../../lib/api";
 
 export default function AdminLogin() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [email, setEmail] = useState("admin@vetty.co.ke");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    dispatch(login({ role: "admin", name: email.split("@")[0] || "Admin" }));
-    navigate("/admin/dashboard");
+    try {
+      setError("");
+      const { user, access_token } = await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+      if (user.role !== "admin") throw new Error("This account is not an administrator.");
+      dispatch(login({ role: user.role, name: user.username, email: user.email, token: access_token }));
+      navigate("/admin/dashboard");
+    } catch (requestError) { setError(requestError.message); }
   };
 
   return (
@@ -28,6 +35,7 @@ export default function AdminLogin() {
           <Field label="Admin email" value={email} onChange={setEmail} type="email" placeholder="admin@vetty.co.ke" required />
           <Field label="Password" value={password} onChange={setPassword} type="password" placeholder="••••••••" required />
           <Btn full type="submit">Secure Login</Btn>
+          {error && <p className="text-xs text-red-600">{error}</p>}
           <p className="text-[10px] text-center flex items-center justify-center gap-1" style={{ color: C.gray }}><ShieldCheck size={11} /> Two-factor authentication enabled</p>
         </div>
       </form>

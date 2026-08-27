@@ -12,13 +12,12 @@ import Field from "../../components/Field";
 import Btn from "../../components/Btn";
 import { C } from "../../theme/colors";
 import StripeCheckoutForm from "../../components/StripeCheckoutForm";
+import { api, API_BASE } from "../../lib/api";
 
 const METHODS = [
   { id: "mpesa", label: "M-Pesa", sub: "Pay via Safaricom M-Pesa STK push" },
   { id: "stripe", label: "Stripe (Card)", sub: "Visa, Mastercard & more" },
 ];
-
-const API_BASE = (import.meta.env.VITE_API_URL || "http://127.0.0.1:5000").replace(/\/$/, "");
 
 export default function Payment() {
   const [mpesaPhone, setMpesaPhone] = useState("");
@@ -50,25 +49,11 @@ export default function Payment() {
     navigate("/confirmation");
   };
 
-  const request = async (path, options = {}) => {
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || data.msg || "Payment request failed.");
-    return data;
-  };
-
   const createServerOrder = async () => {
-    // The current demo backend uses this temporary login route to issue a JWT.
-    // Production should use the token issued by the application's real auth flow.
-    const session = await request("/api/login", {
-      method: "POST", body: JSON.stringify({ username: auth.name || "vetty-customer" }),
-    });
-    const headers = { Authorization: `Bearer ${session.access_token}` };
-    const order = await request("/api/orders", {
-      method: "POST", headers, body: JSON.stringify({ total_amount: total }),
+    if (!auth.token) throw new Error("Please sign in before paying.");
+    const headers = { Authorization: `Bearer ${auth.token}` };
+    const order = await api("/api/orders", {
+      method: "POST", token: auth.token, body: JSON.stringify({ total_amount: total }),
     });
     return { order, headers };
   };
@@ -79,7 +64,7 @@ export default function Payment() {
 
     const checkPayment = async () => {
       try {
-        const payment = await request(`/api/payments/${pendingPayment.id}`, { headers: pendingPayment.headers });
+        const payment = await api(`/api/payments/${pendingPayment.id}`, { token: auth.token });
         if (cancelled) return;
         if (payment.status === "paid") {
           setPendingPayment(null);
@@ -104,8 +89,8 @@ export default function Payment() {
     setIsStarting(true); setPaymentError("");
     try {
       const { order, headers } = await createServerOrder();
-      const payment = await request("/api/payments/mpesa/stk-push", {
-        method: "POST", headers,
+      const payment = await api("/api/payments/mpesa/stk-push", {
+        method: "POST", token: auth.token,
         body: JSON.stringify({ order_id: order.id, phone: mpesaPhone }),
       });
       setPendingPayment({ id: payment.payment.id, headers });
@@ -120,8 +105,8 @@ export default function Payment() {
     setIsStarting(true); setPaymentError("");
     try {
       const { order, headers } = await createServerOrder();
-      const payment = await request("/api/payments/stripe/intents", {
-        method: "POST", headers, body: JSON.stringify({ order_id: order.id }),
+      const payment = await api("/api/payments/stripe/intents", {
+        method: "POST", token: auth.token, body: JSON.stringify({ order_id: order.id }),
       });
       if (!payment.publishable_key) throw new Error("Stripe is not configured with a publishable key.");
       setStripeSetup({

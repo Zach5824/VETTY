@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 
-APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
+APP_PATH = Path(__file__).resolve().parents[1] / "vetty_api.py"
 
 
 @pytest.fixture
@@ -30,8 +30,15 @@ def payment_app(tmp_path, monkeypatch):
 
 def customer_and_order(module):
     client = module.app.test_client()
-    login = client.post("/api/login", json={"username": "stripe-test-customer"})
-    headers = {"Authorization": f"Bearer {login.get_json()['access_token']}"}
+    signup = client.post(
+        "/api/auth/signup",
+        json={
+            "username": "stripe-test-customer",
+            "email": "stripe@example.test",
+            "password": "Password123!",
+        },
+    )
+    headers = {"Authorization": f"Bearer {signup.get_json()['access_token']}"}
     order = client.post("/api/orders", headers=headers, json={"total_amount": 2500})
     return client, headers, order.get_json()["id"]
 

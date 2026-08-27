@@ -41,7 +41,7 @@ export default function Products() {
           {list.map((p) => (
             <div key={p.id} className="rounded-2xl overflow-hidden bg-white" style={{ border: `1px solid ${C.lightGray}` }}>
               <button className="w-full text-left" onClick={() => navigate(`/products/${p.id}`)}>
-                <ImgBox h={92} r={0} icon={p.icon} />
+                <ImgBox h={92} r={0} icon={p.icon} name={p.name} />
                 <div className="p-3">
                   <p className="text-xs font-semibold line-clamp-2" style={{ color: C.charcoal }}>{p.name}</p>
                   {p.stock === 0 && <p className="text-[10px] font-semibold mt-1" style={{ color: C.danger }}>Out of stock</p>}

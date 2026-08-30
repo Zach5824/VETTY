@@ -6,6 +6,7 @@ from datetime import timedelta
 from flask import Flask, jsonify, request
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_cors import CORS
+from flasgger import Flasgger
 from sqlalchemy import inspect, text
 from datetime import datetime
 from dotenv import load_dotenv
@@ -44,11 +45,55 @@ jwt = JWTManager(app)
 allowed_origins = [origin.strip() for origin in os.getenv('CORS_ORIGINS', '').split(',') if origin.strip()]
 CORS(app, resources={r'/api/*': {'origins': allowed_origins or '*'}})
 
+# Initialize Flasgger for Swagger UI documentation
+swagger = Flasgger(app, config={
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": 'apispec',
+            "route": '/apispec.json',
+            "rule_filter": lambda rule: not rule.endpoint.startswith(('static', 'swaggerui')),
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/api/docs",
+    "info": {
+        "title": "Vetty API",
+        "version": "1.0.0",
+        "description": "Pet-care marketplace API for Kenya"
+    }
+})
+
 @app.route('/', methods=['GET'])
 @app.route('/api', methods=['GET'])
 @app.route('/api/', methods=['GET'])
 def api_index():
-    """Make the backend URL useful when opened directly in a browser."""
+    """
+    Make the backend URL useful when opened directly in a browser.
+    ---
+    tags:
+      - API Info
+    responses:
+      200:
+        description: API information and available endpoints
+        schema:
+          type: object
+          properties:
+            service:
+              type: string
+              example: "Vetty API"
+            status:
+              type: string
+              example: "ok"
+            health:
+              type: string
+              example: "/api/health"
+            authentication:
+              type: string
+              example: "/api/auth/login"
+    """
     return jsonify({
         'service': 'Vetty API',
         'status': 'ok',
@@ -59,7 +104,21 @@ def api_index():
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    """Lightweight endpoint for deployment and frontend connectivity checks."""
+    """
+    Lightweight endpoint for deployment and frontend connectivity checks.
+    ---
+    tags:
+      - Health Check
+    responses:
+      200:
+        description: Health check passed
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: "ok"
+    """
     return jsonify({'status': 'ok'}), 200
 
 
@@ -172,6 +231,57 @@ def mpesa_access_token(requests, base_url):
 
 @app.route('/api/auth/signup', methods=['POST'])
 def signup():
+    """
+    Register a new user account.
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            username:
+              type: string
+              example: "john_doe"
+              minLength: 2
+            email:
+              type: string
+              format: email
+              example: "john@example.com"
+            password:
+              type: string
+              format: password
+              example: "SecurePass123"
+              minLength: 8
+    responses:
+      201:
+        description: User account created successfully
+        schema:
+          type: object
+          properties:
+            user:
+              type: object
+              properties:
+                id:
+                  type: integer
+                username:
+                  type: string
+                email:
+                  type: string
+                role:
+                  type: string
+            access_token:
+              type: string
+            token_type:
+              type: string
+      400:
+        description: Invalid input parameters
+      409:
+        description: Username or email already exists
+    """
     data = request.get_json(silent=True) or {}
     username = str(data.get('username') or '').strip()
     email = str(data.get('email') or '').strip().lower()
@@ -187,6 +297,46 @@ def signup():
 
 @app.route('/api/auth/login', methods=['POST'])
 def password_login():
+    """
+    Login with email or username and password.
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+              example: "john@example.com"
+            username:
+              type: string
+              example: "john_doe"
+            password:
+              type: string
+              format: password
+              example: "SecurePass123"
+          required:
+            - password
+    responses:
+      200:
+        description: Login successful
+        schema:
+          type: object
+          properties:
+            user:
+              type: object
+            access_token:
+              type: string
+            token_type:
+              type: string
+      401:
+        description: Invalid email or password
+    """
     data = request.get_json(silent=True) or {}
     identifier = str(data.get('email') or data.get('username') or '').strip()
     password = str(data.get('password') or '')
@@ -199,6 +349,33 @@ def password_login():
 @app.route('/api/auth/me', methods=['GET'])
 @jwt_required()
 def me():
+    """
+    Get current user profile.
+    ---
+    tags:
+      - Authentication
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Current user information
+        schema:
+          type: object
+          properties:
+            user:
+              type: object
+              properties:
+                id:
+                  type: integer
+                username:
+                  type: string
+                email:
+                  type: string
+                role:
+                  type: string
+      401:
+        description: Unauthorized - token missing or invalid
+    """
     user = current_user()
     return jsonify({'user': user.to_dict()})
 
@@ -216,6 +393,58 @@ def catalog_response(model):
 @app.route('/api/products', methods=['GET', 'POST'])
 @jwt_required(optional=True)
 def products():
+    """
+    Get all products or create a new product.
+    ---
+    tags:
+      - Products
+    parameters:
+      - in: body
+        name: body
+        required: false
+        description: Required only for POST requests (admin only)
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Dog Food"
+            price:
+              type: number
+              example: 2500.00
+            category:
+              type: string
+              example: "Food"
+            desc:
+              type: string
+              example: "Premium dog food"
+            stock:
+              type: integer
+              example: 50
+            threshold:
+              type: integer
+              example: 10
+            icon:
+              type: string
+              example: "Package"
+          required:
+            - name
+            - price
+            - category
+    responses:
+      200:
+        description: List of all products (GET)
+        schema:
+          type: array
+          items:
+            type: object
+      201:
+        description: Product created successfully (POST, admin only)
+      400:
+        description: Missing required fields
+      403:
+        description: Admin access required for POST
+    """
     if request.method == 'GET': return catalog_response(Product)
     auth_error = admin_required()
     if auth_error: return auth_error
@@ -230,6 +459,50 @@ def products():
 @app.route('/api/products/<int:product_id>', methods=['GET', 'PATCH', 'DELETE'])
 @jwt_required(optional=True)
 def product_detail(product_id):
+    """
+    Get, update, or delete a product.
+    ---
+    tags:
+      - Products
+    parameters:
+      - in: path
+        name: product_id
+        type: integer
+        required: true
+        description: Product ID
+      - in: body
+        name: body
+        required: false
+        description: Fields to update (PATCH only, admin required)
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+            price:
+              type: number
+            category:
+              type: string
+            description:
+              type: string
+            stock:
+              type: integer
+            threshold:
+              type: integer
+            icon:
+              type: string
+    responses:
+      200:
+        description: Product details
+        schema:
+          type: object
+      204:
+        description: Product deleted successfully (DELETE)
+      404:
+        description: Product not found
+      403:
+        description: Admin access required for PATCH/DELETE
+    """
     product = db.session.get(Product, product_id)
     if not product: return error('Product not found', 404)
     if request.method == 'GET': return jsonify(product.to_dict())
@@ -243,6 +516,52 @@ def product_detail(product_id):
 @app.route('/api/services', methods=['GET', 'POST'])
 @jwt_required(optional=True)
 def services():
+    """
+    Get all services or create a new service.
+    ---
+    tags:
+      - Services
+    parameters:
+      - in: body
+        name: body
+        required: false
+        description: Required only for POST requests (admin only)
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Veterinary Checkup"
+            price:
+              type: number
+              example: 5000.00
+            duration:
+              type: string
+              example: "1 hour"
+            desc:
+              type: string
+              example: "General health checkup"
+            icon:
+              type: string
+              example: "Stethoscope"
+          required:
+            - name
+            - price
+            - duration
+    responses:
+      200:
+        description: List of all services (GET)
+        schema:
+          type: array
+          items:
+            type: object
+      201:
+        description: Service created successfully (POST, admin only)
+      400:
+        description: Missing required fields
+      403:
+        description: Admin access required for POST
+    """
     if request.method == 'GET': return catalog_response(Service)
     auth_error = admin_required()
     if auth_error: return auth_error
@@ -255,6 +574,46 @@ def services():
 @app.route('/api/services/<int:service_id>', methods=['GET', 'PATCH', 'DELETE'])
 @jwt_required(optional=True)
 def service_detail(service_id):
+    """
+    Get, update, or delete a service.
+    ---
+    tags:
+      - Services
+    parameters:
+      - in: path
+        name: service_id
+        type: integer
+        required: true
+        description: Service ID
+      - in: body
+        name: body
+        required: false
+        description: Fields to update (PATCH only, admin required)
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+            price:
+              type: number
+            duration:
+              type: string
+            description:
+              type: string
+            icon:
+              type: string
+    responses:
+      200:
+        description: Service details
+        schema:
+          type: object
+      204:
+        description: Service deleted successfully (DELETE)
+      404:
+        description: Service not found
+      403:
+        description: Admin access required for PATCH/DELETE
+    """
     service = db.session.get(Service, service_id)
     if not service: return error('Service not found', 404)
     if request.method == 'GET': return jsonify(service.to_dict())
@@ -268,6 +627,45 @@ def service_detail(service_id):
 @app.route('/api/zones', methods=['GET', 'POST'])
 @jwt_required(optional=True)
 def zones():
+    """
+    Get all delivery zones or create a new zone.
+    ---
+    tags:
+      - Delivery Zones
+    parameters:
+      - in: body
+        name: body
+        required: false
+        description: Required only for POST requests (admin only)
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Nairobi CBD"
+            fee:
+              type: number
+              example: 500.00
+            eta:
+              type: string
+              example: "2 hours"
+          required:
+            - name
+            - eta
+    responses:
+      200:
+        description: List of all delivery zones (GET)
+        schema:
+          type: array
+          items:
+            type: object
+      201:
+        description: Delivery zone created successfully (POST, admin only)
+      400:
+        description: Missing required fields
+      403:
+        description: Admin access required for POST
+    """
     if request.method == 'GET': return catalog_response(DeliveryZone)
     auth_error = admin_required()
     if auth_error: return auth_error
@@ -280,6 +678,42 @@ def zones():
 @app.route('/api/zones/<int:zone_id>', methods=['PATCH', 'DELETE'])
 @jwt_required()
 def zone_detail(zone_id):
+    """
+    Update or delete a delivery zone (admin only).
+    ---
+    tags:
+      - Delivery Zones
+    parameters:
+      - in: path
+        name: zone_id
+        type: integer
+        required: true
+        description: Zone ID
+      - in: body
+        name: body
+        required: false
+        description: Fields to update (PATCH only)
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+            fee:
+              type: number
+            eta:
+              type: string
+    responses:
+      200:
+        description: Delivery zone updated
+        schema:
+          type: object
+      204:
+        description: Delivery zone deleted successfully (DELETE)
+      404:
+        description: Delivery zone not found
+      403:
+        description: Admin access required
+    """
     auth_error = admin_required()
     if auth_error: return auth_error
     zone = db.session.get(DeliveryZone, zone_id)
@@ -291,6 +725,52 @@ def zone_detail(zone_id):
 @app.route('/api/bookings', methods=['GET', 'POST'])
 @jwt_required()
 def bookings():
+    """
+    Get user bookings or create a new booking.
+    ---
+    tags:
+      - Bookings
+    security:
+      - Bearer: []
+    parameters:
+      - in: body
+        name: body
+        required: false
+        description: Required only for POST requests
+        schema:
+          type: object
+          properties:
+            service_id:
+              type: integer
+              example: 1
+            pet_name:
+              type: string
+              example: "Max"
+            appointment_at:
+              type: string
+              format: date-time
+              example: "2024-09-15T14:30:00"
+            notes:
+              type: string
+              example: "Pet has allergies"
+          required:
+            - service_id
+            - pet_name
+            - appointment_at
+    responses:
+      200:
+        description: List of user bookings (GET)
+        schema:
+          type: array
+          items:
+            type: object
+      201:
+        description: Booking created successfully (POST)
+      400:
+        description: Missing required fields
+      401:
+        description: Unauthorized - token required
+    """
     user = current_user()
     if request.method == 'GET':
         query = Booking.query
@@ -307,6 +787,48 @@ def bookings():
 @app.route('/api/bookings/<int:booking_id>', methods=['PATCH', 'DELETE'])
 @jwt_required()
 def booking_detail(booking_id):
+    """
+    Update or delete a booking.
+    ---
+    tags:
+      - Bookings
+    security:
+      - Bearer: []
+    parameters:
+      - in: path
+        name: booking_id
+        type: integer
+        required: true
+        description: Booking ID
+      - in: body
+        name: body
+        required: false
+        description: Fields to update (PATCH only)
+        schema:
+          type: object
+          properties:
+            pet_name:
+              type: string
+            appointment_at:
+              type: string
+              format: date-time
+            notes:
+              type: string
+            status:
+              type: string
+              description: Admin only
+    responses:
+      200:
+        description: Booking updated
+        schema:
+          type: object
+      204:
+        description: Booking deleted successfully (DELETE)
+      404:
+        description: Booking not found
+      403:
+        description: Access denied
+    """
     booking = db.session.get(Booking, booking_id)
     if not booking: return error('Booking not found', 404)
     user = current_user()
@@ -320,6 +842,46 @@ def booking_detail(booking_id):
 @app.route('/api/orders', methods=['POST'])
 @jwt_required()
 def create_order():
+    """
+    Create a new order.
+    ---
+    tags:
+      - Orders
+    security:
+      - Bearer: []
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            total_amount:
+              type: number
+              example: 5000.00
+          required:
+            - total_amount
+    responses:
+      201:
+        description: Order created successfully
+        schema:
+          type: object
+          properties:
+            id:
+              type: integer
+            user_id:
+              type: integer
+            total_amount:
+              type: number
+            status:
+              type: string
+            created_at:
+              type: string
+      400:
+        description: Missing total_amount
+      401:
+        description: Unauthorized - token required
+    """
     current_user_id = get_jwt_identity()
     data = request.get_json() or {}
     
@@ -347,6 +909,34 @@ def create_order():
 @app.route('/api/orders', methods=['GET'])
 @jwt_required()
 def get_user_orders():
+    """
+    Get all orders for the current user.
+    ---
+    tags:
+      - Orders
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: List of user orders
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              user_id:
+                type: integer
+              total_amount:
+                type: number
+              status:
+                type: string
+              created_at:
+                type: string
+      401:
+        description: Unauthorized - token required
+    """
     current_user_id = get_jwt_identity()
     orders = Order.query.filter_by(user_id=int(current_user_id)).order_by(Order.created_at.desc()).all()
     
@@ -365,6 +955,46 @@ def get_user_orders():
 @app.route('/api/payments/stripe/intents', methods=['POST'])
 @jwt_required()
 def create_stripe_payment_intent():
+    """
+    Create a Stripe PaymentIntent for checkout.
+    ---
+    tags:
+      - Payments - Stripe
+    security:
+      - Bearer: []
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            order_id:
+              type: integer
+              example: 1
+          required:
+            - order_id
+    responses:
+      201:
+        description: PaymentIntent created successfully
+        schema:
+          type: object
+          properties:
+            payment:
+              type: object
+            client_secret:
+              type: string
+            publishable_key:
+              type: string
+      400:
+        description: Invalid order
+      403:
+        description: Access denied - order belongs to another user
+      409:
+        description: Payment already pending for this order
+      503:
+        description: Payment provider not configured
+    """
     try:
         required_settings('STRIPE_SECRET_KEY')
         import stripe
@@ -407,6 +1037,19 @@ def create_stripe_payment_intent():
 
 @app.route('/api/payments/stripe/webhook', methods=['POST'])
 def stripe_webhook():
+    """
+    Stripe webhook endpoint for payment events.
+    ---
+    tags:
+      - Payments - Stripe
+    responses:
+      200:
+        description: Webhook received and processed
+      400:
+        description: Invalid webhook signature
+      503:
+        description: Stripe not configured
+    """
     try:
         required_settings('STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET')
         import stripe
@@ -435,6 +1078,50 @@ def stripe_webhook():
 @app.route('/api/payments/mpesa/stk-push', methods=['POST'])
 @jwt_required()
 def initiate_mpesa_stk_push():
+    """
+    Initiate M-Pesa STK Push payment.
+    ---
+    tags:
+      - Payments - M-Pesa
+    security:
+      - Bearer: []
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            order_id:
+              type: integer
+              example: 1
+            phone:
+              type: string
+              example: "254712345678"
+          required:
+            - order_id
+            - phone
+    responses:
+      201:
+        description: STK Push initiated successfully
+        schema:
+          type: object
+          properties:
+            payment:
+              type: object
+            merchant_request_id:
+              type: string
+            customer_message:
+              type: string
+      400:
+        description: Invalid order or phone number
+      403:
+        description: Access denied
+      409:
+        description: Payment already pending
+      503:
+        description: M-Pesa not configured
+    """
     try:
         import requests
         required_settings('MPESA_CONSUMER_KEY', 'MPESA_CONSUMER_SECRET', 'MPESA_SHORTCODE', 'MPESA_PASSKEY', 'MPESA_CALLBACK_URL', 'MPESA_CALLBACK_TOKEN')
@@ -485,7 +1172,42 @@ def initiate_mpesa_stk_push():
 @app.route('/api/payments/mpesa/query', methods=['POST'])
 @jwt_required()
 def query_mpesa_stk_push():
-    """Check an existing STK Push by its saved CheckoutRequestID."""
+    """
+    Query the status of an M-Pesa STK Push payment.
+    ---
+    tags:
+      - Payments - M-Pesa
+    security:
+      - Bearer: []
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            payment_id:
+              type: integer
+              example: 1
+          required:
+            - payment_id
+    responses:
+      200:
+        description: Payment status retrieved
+        schema:
+          type: object
+          properties:
+            payment:
+              type: object
+            provider_result:
+              type: object
+      404:
+        description: Payment not found
+      403:
+        description: Access denied
+      503:
+        description: M-Pesa not configured
+    """
     try:
         import requests
         required_settings('MPESA_CONSUMER_KEY', 'MPESA_CONSUMER_SECRET', 'MPESA_SHORTCODE', 'MPESA_PASSKEY')
@@ -525,6 +1247,23 @@ def query_mpesa_stk_push():
 
 @app.route('/api/payments/mpesa/callback', methods=['POST'])
 def mpesa_callback():
+    """
+    M-Pesa callback endpoint for payment notifications.
+    ---
+    tags:
+      - Payments - M-Pesa
+    parameters:
+      - in: query
+        name: token
+        type: string
+        required: false
+        description: Callback validation token
+    responses:
+      200:
+        description: Callback received and processed
+      403:
+        description: Invalid callback token
+    """
     configured_token = os.getenv('MPESA_CALLBACK_TOKEN')
     if configured_token and not hmac.compare_digest(request.args.get('token', ''), configured_token):
         return error('Invalid callback token', 403)
@@ -547,6 +1286,29 @@ def mpesa_callback():
 @app.route('/api/payments/<int:payment_id>', methods=['GET'])
 @jwt_required()
 def payment_status(payment_id):
+    """
+    Get payment details and status.
+    ---
+    tags:
+      - Payments
+    security:
+      - Bearer: []
+    parameters:
+      - in: path
+        name: payment_id
+        type: integer
+        required: true
+        description: Payment ID
+    responses:
+      200:
+        description: Payment details
+        schema:
+          type: object
+      404:
+        description: Payment not found
+      403:
+        description: Access denied
+    """
     payment = db.session.get(Payment, payment_id)
     if not payment: return error('Payment not found', 404)
     if payment.order.user_id != int(get_jwt_identity()): return error('Access denied', 403)

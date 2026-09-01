@@ -21,7 +21,7 @@ export default function AdminDashboard() {
   const sales = orders.reduce((s, o) => s + o.total, 0);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="min-h-[100dvh] flex flex-col">
       <div className="flex items-center justify-between px-5 h-16 shrink-0" style={{ background: C.maroon }}>
         <h1 className="text-base font-bold text-white">Dashboard</h1>
         <button onClick={() => { dispatch(logout()); navigate("/"); }}><LogOut size={17} color="#fff" /></button>

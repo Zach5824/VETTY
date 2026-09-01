@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { api } from "./lib/api";
+import { hydrateCatalog } from "./store/slices/catalogSlice";
 import Layout from "./components/Layout";
 
 import Splash from "./pages/customer/Splash";
@@ -35,7 +37,19 @@ function RequireAdmin({ children }) {
     : <Navigate to="/admin/login" replace />;
 }
 
+function RequireAuth({ children }) {
+  const loggedIn = useSelector((state) => state.auth.loggedIn);
+  return loggedIn ? children : <Navigate to="/login" replace />;
+}
+
 export default function App() {
+  const dispatch = useDispatch();
+  useEffect(() => {
+    Promise.all([api("/api/products"), api("/api/services"), api("/api/zones")])
+      .then(([products, services, zones]) => dispatch(hydrateCatalog({ products, services, zones })))
+      .catch(() => {}); // Seed data keeps the interface usable before the API is started.
+  }, [dispatch]);
+
   return (
     <Routes>
       <Route element={<Layout />}>
@@ -47,15 +61,15 @@ export default function App() {
         <Route path="/products/:id" element={<ProductDetail />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/services" element={<Services />} />
-        <Route path="/booking/:serviceId" element={<Booking />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/payment" element={<Payment />} />
-        <Route path="/confirmation" element={<Confirmation />} />
-        <Route path="/tracking" element={<Tracking />} />
-        <Route path="/tracking/:orderId" element={<Tracking />} />
-        <Route path="/history" element={<History />} />
-        <Route path="/review/:orderId" element={<Review />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/booking/:serviceId" element={<RequireAuth><Booking /></RequireAuth>} />
+        <Route path="/checkout" element={<RequireAuth><Checkout /></RequireAuth>} />
+        <Route path="/payment" element={<RequireAuth><Payment /></RequireAuth>} />
+        <Route path="/confirmation" element={<RequireAuth><Confirmation /></RequireAuth>} />
+        <Route path="/tracking" element={<RequireAuth><Tracking /></RequireAuth>} />
+        <Route path="/tracking/:orderId" element={<RequireAuth><Tracking /></RequireAuth>} />
+        <Route path="/history" element={<RequireAuth><History /></RequireAuth>} />
+        <Route path="/review/:orderId" element={<RequireAuth><Review /></RequireAuth>} />
+        <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
 
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />

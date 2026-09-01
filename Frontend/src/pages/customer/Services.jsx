@@ -17,7 +17,7 @@ export default function Services() {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 mt-3">
         {services.map((s) => (
           <button key={s.id} onClick={() => navigate(`/booking/${s.id}`)} className="flex items-center gap-3 p-3 rounded-2xl text-left" style={{ background: C.sectionBg }}>
-            <ImgBox h={56} r={12} icon={s.icon} className="w-14" />
+            <ImgBox h={56} r={12} icon={s.icon} name={s.name} className="w-14" />
             <div className="flex-1">
               <p className="text-sm font-semibold" style={{ color: C.charcoal }}>{s.name}</p>
               <p className="text-[11px] mt-0.5" style={{ color: C.gray }}>{s.desc}</p>

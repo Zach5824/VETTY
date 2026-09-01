@@ -58,7 +58,7 @@ export default function Home() {
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
             {featured.map((p) => (
               <button key={p.id} className="text-left rounded-2xl overflow-hidden" style={{ background: C.sectionBg }} onClick={() => navigate(`/products/${p.id}`)}>
-                <ImgBox h={100} r={0} icon={p.icon} />
+                <ImgBox h={100} r={0} icon={p.icon} name={p.name} />
                 <div className="p-3">
                   <p className="text-xs font-semibold" style={{ color: C.charcoal }}>{p.name}</p>
                   <p className="text-sm font-bold mt-1" style={{ color: C.maroon }}>KSh {p.price.toLocaleString()}</p>

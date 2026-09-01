@@ -5,17 +5,28 @@ import { login } from "../../store/slices/authSlice";
 import Btn from "../../components/Btn";
 import Field from "../../components/Field";
 import { C, GRADIENT, serif } from "../../theme/colors";
+import { api } from "../../lib/api";
 
 export default function Login() {
-  const [email, setEmail] = useState("jane@vetty.co.ke");
+  const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    dispatch(login({ role: "customer", name: "Jane Wanjiku" }));
-    navigate("/home");
+    try {
+      setError(""); setIsSubmitting(true);
+      const { user, access_token } = await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email: email.trim().toLowerCase(), password: pw }) });
+      dispatch(login({ role: user.role, name: user.username, email: user.email, token: access_token }));
+      navigate("/home");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -26,9 +37,10 @@ export default function Login() {
           <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: serif, color: C.maroon }}>Welcome back</h2>
           <p className="text-xs mb-5" style={{ color: C.gray }}>Login to manage your pet's food, health & bookings.</p>
           <div className="flex flex-col gap-3">
-            <Field label="Email" value={email} onChange={setEmail} placeholder="you@email.com" />
-            <Field label="Password" value={pw} onChange={setPw} type="password" placeholder="••••••••" />
-            <Btn full type="submit">Login</Btn>
+            <Field label="Email" value={email} onChange={setEmail} type="email" placeholder="you@email.com" required />
+            <Field label="Password" value={pw} onChange={setPw} type="password" placeholder="••••••••" required />
+            <Btn full type="submit" disabled={isSubmitting}>{isSubmitting ? "Logging in…" : "Login"}</Btn>
+            {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
             <button type="button" className="text-xs font-semibold text-center" style={{ color: C.rose }} onClick={() => navigate("/register")}>
               New to Vetty? Create an account
             </button>

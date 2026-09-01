@@ -1,7 +1,11 @@
 // In development Vite proxies this path to Flask. In production it targets the
 // same host unless a separately deployed API URL is explicitly configured.
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
-const API_BASE = (configuredApiUrl || "/api").replace(/\/$/, "");
+// API callers use namespaced paths such as `/api/auth/login`.  Keep the
+// default base empty so Vite can proxy those paths without producing the
+// accidental `/api/api/...` URL. `VITE_API_URL` is a backend origin when the
+// client and API are deployed separately.
+const API_BASE = (configuredApiUrl || "").replace(/\/$/, "");
 const delay = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 
 export async function api(path, { token, ...options } = {}) {

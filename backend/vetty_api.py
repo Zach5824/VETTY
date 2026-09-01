@@ -1,8 +1,10 @@
 import os
 import base64
 import hmac
+import sys
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from datetime import timedelta
+from pathlib import Path
 from flask import Flask, jsonify, request
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_cors import CORS
@@ -11,6 +13,13 @@ from sqlalchemy import inspect, text
 from datetime import datetime
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
+
+# Support both `flask --app vetty_api` from backend/ and importing this WSGI
+# module from the repository root (as the verification suite and Vercel do).
+backend_directory = str(Path(__file__).resolve().parent)
+if backend_directory not in sys.path:
+    sys.path.insert(0, backend_directory)
+
 from auth import admin_required, current_user, error
 from database import db
 from models import Booking, DeliveryZone, Order, Payment, Product, Service, User
@@ -25,8 +34,10 @@ runtime_dir = '/tmp/vetty' if os.getenv('VERCEL') else os.path.join(os.path.dirn
 os.makedirs(runtime_dir, exist_ok=True)
 
 # Configurations
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'vetty-super-secret-key')
-app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-super-secret-key')
+jwt_secret = os.environ.get('JWT_SECRET_KEY')
+if not jwt_secret or jwt_secret.startswith('replace-'):
+    raise RuntimeError('JWT_SECRET_KEY must be set to a long, unique secret')
+app.config['JWT_SECRET_KEY'] = jwt_secret
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
 # An absolute path makes the local database location predictable even when the
 # app is started from the repository root rather than the backend directory.
@@ -65,6 +76,20 @@ swagger = Flasgger(app, config={
         "description": "Pet-care marketplace API for Kenya"
     }
 })
+
+@jwt.unauthorized_loader
+def missing_token(reason):
+    return jsonify({'error': 'Authentication required', 'detail': reason}), 401
+
+
+@jwt.invalid_token_loader
+def invalid_token(reason):
+    return jsonify({'error': 'Invalid authentication token', 'detail': reason}), 401
+
+
+@jwt.expired_token_loader
+def expired_token(_jwt_header, _jwt_payload):
+    return jsonify({'error': 'Authentication token has expired'}), 401
 
 @app.route('/', methods=['GET'])
 @app.route('/api', methods=['GET'])
@@ -196,6 +221,17 @@ def amount_in_cents(amount):
     if result <= 0:
         raise ValueError('Order amount must be greater than zero')
     return int(result)
+
+
+def validated_order_amount(amount):
+    """Parse an order amount safely before it is persisted or sent to a PSP."""
+    try:
+        result = Decimal(str(amount)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, ValueError):
+        raise ValueError('total_amount must be a valid monetary amount')
+    if not result.is_finite() or result <= 0:
+        raise ValueError('total_amount must be greater than zero')
+    return result
 
 
 def normalize_kenyan_phone(phone):
@@ -886,8 +922,12 @@ def create_order():
     data = request.get_json() or {}
     
     total_amount = data.get('total_amount')
-    if not total_amount:
-        return jsonify({'msg': 'total_amount is required'}), 400
+    if total_amount is None:
+        return error('total_amount is required')
+    try:
+        total_amount = validated_order_amount(total_amount)
+    except ValueError as exc:
+        return error(str(exc))
 
     new_order = Order(
         user_id=int(current_user_id),

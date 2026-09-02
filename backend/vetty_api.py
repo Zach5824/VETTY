@@ -42,6 +42,11 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
 # An absolute path makes the local database location predictable even when the
 # app is started from the repository root rather than the backend directory.
 database_url = os.environ.get('DATABASE_URL', f"sqlite:///{os.path.join(runtime_dir, 'vetty.db')}")
+# Neon supplies a generic ``postgresql://`` URL.  Explicitly select the
+# psycopg v3 driver that is included in requirements.txt instead of SQLAlchemy's
+# legacy psycopg2 default.
+if database_url.startswith('postgresql://'):
+    database_url = f"postgresql+psycopg://{database_url[len('postgresql://'):]}"
 # Flask-SQLAlchemy resolves relative SQLite URLs from Flask's instance path,
 # which differs when this module is imported as ``vetty_api`` vs
 # ``backend.vetty_api``. Resolve them beside this file so both launch commands

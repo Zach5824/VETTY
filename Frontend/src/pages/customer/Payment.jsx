@@ -6,7 +6,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { setPayment } from "../../store/slices/checkoutSlice";
 import { placeOrder } from "../../store/slices/ordersSlice";
 import { decrementStock } from "../../store/slices/catalogSlice";
-import { clearCart } from "../../store/slices/cartSlice";
+import { clearSelectedCart } from "../../store/slices/cartSlice";
 import ScreenHeader from "../../components/ScreenHeader";
 import Field from "../../components/Field";
 import Btn from "../../components/Btn";
@@ -34,7 +34,7 @@ export default function Payment() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const items = cart.map((c) => ({ ...c, product: products.find((p) => p.id === c.productId) })).filter((c) => c.product);
+  const items = cart.map((c) => ({ ...c, product: products.find((p) => p.id === c.productId) })).filter((c) => c.product && c.selected !== false);
   const subtotal = items.reduce((s, c) => s + c.product.price * c.qty, 0);
   const zone = zones.find((z) => z.id === zoneId) || zones[0];
   const total = subtotal + zone.fee;
@@ -45,7 +45,7 @@ export default function Payment() {
       total, customer: auth.name || "You", payment: method,
     }));
     dispatch(decrementStock(items.map((i) => ({ productId: i.productId, qty: i.qty }))));
-    dispatch(clearCart());
+    dispatch(clearSelectedCart());
     navigate("/confirmation");
   };
 

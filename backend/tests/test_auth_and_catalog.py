@@ -38,6 +38,10 @@ def test_password_auth_and_admin_catalog_protection(tmp_path, monkeypatch):
     assert customer_login.status_code == 200
     assert customer_login.get_json()['user']['username'] == 'jane'
     assert client.post('/api/auth/login', json={'email': 'jane@example.test', 'password': 'wrong-password'}).status_code == 401
+    photo = 'data:image/png;base64,iVBORw0KGgo='
+    saved_photo = client.patch('/api/auth/me', headers={'Authorization': f'Bearer {customer_token}'}, json={'profile_photo': photo})
+    assert saved_photo.status_code == 200
+    assert client.post('/api/auth/login', json={'email': 'jane@example.test', 'password': 'Password123!'}).get_json()['user']['profile_photo'] == photo
     assert client.post('/api/products', json={'name': 'Food', 'price': 500, 'category': 'Food'}).status_code == 403
 
     admin_login = client.post('/api/auth/login', json={'email': 'admin@example.test', 'password': 'Password123!'})

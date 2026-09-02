@@ -9,24 +9,60 @@ import Btn from "../../components/Btn";
 import ImgBox from "../../components/ImgBox";
 import AdminNav from "../../components/AdminNav";
 import { C } from "../../theme/colors";
+import { api } from "../../lib/api";
 
 export default function AdminProducts() {
   const products = useSelector((s) => s.catalog.products);
   const services = useSelector((s) => s.catalog.services);
+  const auth = useSelector((s) => s.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", price: "", stock: "", category: "Food", icon: "Package", desc: "", threshold: "10" });
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  const submit = () => {
+  const submit = async () => {
     if (!form.name || !form.price) return;
-    dispatch(addProduct({
-      name: form.name, price: Number(form.price), stock: Number(form.stock || 0),
-      category: form.category, icon: form.icon, desc: form.desc, threshold: Number(form.threshold),
-    }));
-    setForm({ name: "", price: "", stock: "", category: "Food", icon: "Package", desc: "", threshold: "10" });
-    setShowForm(false);
+    try {
+      setError(""); setIsSaving(true);
+      const product = await api("/api/products", { method: "POST", token: auth.token, body: JSON.stringify({
+        name: form.name.trim(), price: Number(form.price), stock: Number(form.stock || 0),
+        category: form.category.trim(), icon: form.icon, desc: form.desc, threshold: Number(form.threshold),
+      }) });
+      dispatch(addProduct(product));
+      setForm({ name: "", price: "", stock: "", category: "Food", icon: "Package", desc: "", threshold: "10" });
+      setShowForm(false);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const restock = async (product) => {
+    try {
+      setError("");
+      const updated = await api(`/api/products/${product.id}`, { method: "PATCH", token: auth.token, body: JSON.stringify({ stock: product.stock + 20 }) });
+      dispatch(updateProduct({ id: updated.id, patch: updated }));
+    } catch (requestError) { setError(requestError.message); }
+  };
+
+  const removeProduct = async (id) => {
+    try {
+      setError("");
+      await api(`/api/products/${id}`, { method: "DELETE", token: auth.token });
+      dispatch(deleteProduct(id));
+    } catch (requestError) { setError(requestError.message); }
+  };
+
+  const createService = async () => {
+    try {
+      setError("");
+      const service = await api("/api/services", { method: "POST", token: auth.token, body: JSON.stringify({ name: "New Service", price: 1000, duration: "30 min", icon: "Stethoscope", desc: "Describe this service" }) });
+      dispatch(addService(service));
+    } catch (requestError) { setError(requestError.message); }
   };
 
   return (
@@ -49,9 +85,10 @@ export default function AdminProducts() {
             </div>
             <Field label="Category" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
             <Field label="Description" value={form.desc} onChange={(v) => setForm({ ...form, desc: v })} placeholder="Short description…" />
-            <Btn full onClick={submit}>Save Product</Btn>
+            <Btn full disabled={isSaving} onClick={submit}>{isSaving ? "Saving…" : "Save Product"}</Btn>
           </div>
         )}
+        {error && <p role="alert" className="text-xs" style={{ color: C.danger }}>{error}</p>}
         {products.map((p) => (
           <div key={p.id} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: C.sectionBg }}>
             <ImgBox h={48} r={12} icon={p.icon} name={p.name} className="w-12" />
@@ -62,8 +99,8 @@ export default function AdminProducts() {
                 {p.stock === 0 ? "Out of stock" : `Stock: ${p.stock}${p.stock <= p.threshold ? " (low)" : ""}`}
               </p>
             </div>
-            <button onClick={() => dispatch(updateProduct({ id: p.id, patch: { stock: p.stock + 20 } }))} title="Restock +20"><Edit2 size={15} color={C.charcoal} /></button>
-            <button onClick={() => dispatch(deleteProduct(p.id))}><Trash2 size={15} color={C.danger} /></button>
+            <button onClick={() => restock(p)} title="Restock +20"><Edit2 size={15} color={C.charcoal} /></button>
+            <button onClick={() => removeProduct(p.id)}><Trash2 size={15} color={C.danger} /></button>
           </div>
         ))}
 
@@ -78,7 +115,7 @@ export default function AdminProducts() {
             <button onClick={() => dispatch(deleteService(s.id))}><Trash2 size={15} color={C.danger} /></button>
           </div>
         ))}
-        <Btn full variant="ghost" icon={Plus} onClick={() => dispatch(addService({ name: "New Service", price: 1000, duration: "30 min", icon: "Stethoscope", desc: "Describe this service" }))}>
+        <Btn full variant="ghost" icon={Plus} onClick={createService}>
           Add Service
         </Btn>
       </div>

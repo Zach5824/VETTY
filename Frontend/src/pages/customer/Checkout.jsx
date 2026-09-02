@@ -15,7 +15,7 @@ export default function Checkout() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const items = cart.map((c) => ({ ...c, product: products.find((p) => p.id === c.productId) })).filter((c) => c.product);
+  const items = cart.map((c) => ({ ...c, product: products.find((p) => p.id === c.productId) })).filter((c) => c.product && c.selected !== false);
   const subtotal = items.reduce((s, c) => s + c.product.price * c.qty, 0);
   const zone = zones.find((z) => z.id === zoneId) || zones[0];
 

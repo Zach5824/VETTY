@@ -1,8 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { api } from "./lib/api";
 import { hydrateCatalog } from "./store/slices/catalogSlice";
+import { clearCart, hydrateCart } from "./store/slices/cartSlice";
 import Layout from "./components/Layout";
 
 import Splash from "./pages/customer/Splash";
@@ -44,11 +45,36 @@ function RequireAuth({ children }) {
 
 export default function App() {
   const dispatch = useDispatch();
+  const auth = useSelector((state) => state.auth);
+  const cartItems = useSelector((state) => state.cart.items);
+  const [cartTokenReady, setCartTokenReady] = useState(null);
   useEffect(() => {
     Promise.all([api("/api/products"), api("/api/services"), api("/api/zones")])
       .then(([products, services, zones]) => dispatch(hydrateCatalog({ products, services, zones })))
       .catch(() => {}); // Seed data keeps the interface usable before the API is started.
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!auth.token || !auth.loggedIn || auth.role !== "customer") {
+      setCartTokenReady(null);
+      return;
+    }
+    let active = true;
+    setCartTokenReady(null);
+    dispatch(clearCart());
+    api("/api/cart", { token: auth.token })
+      .then(({ items }) => { if (active) { dispatch(hydrateCart(items)); setCartTokenReady(auth.token); } })
+      .catch(() => { if (active) setCartTokenReady(auth.token); });
+    return () => { active = false; };
+  }, [auth.token, auth.loggedIn, auth.role, dispatch]);
+
+  useEffect(() => {
+    if (!auth.token || auth.role !== "customer" || cartTokenReady !== auth.token) return;
+    const timer = window.setTimeout(() => {
+      api("/api/cart", { method: "PUT", token: auth.token, body: JSON.stringify({ items: cartItems }) }).catch(() => {});
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [auth.token, auth.role, cartItems, cartTokenReady]);
 
   return (
     <Routes>

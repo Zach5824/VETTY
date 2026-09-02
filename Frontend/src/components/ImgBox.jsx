@@ -42,7 +42,7 @@ export default function ImgBox({ h = 120, r = 12, icon = "PawPrint", name = "", 
       <img
         src={photoFor(icon, name)}
         alt={name ? `${name} photo` : "Pet care product or service"}
-        className="h-full w-full object-cover"
+        className="h-full w-full object-contain"
         loading="lazy"
         onError={(event) => { event.currentTarget.style.display = "none"; }}
       />

@@ -1,4 +1,4 @@
-import cartReducer, { addToCart, setQty, removeFromCart, setSelected, clearSelectedCart, clearCart } from "../store/slices/cartSlice";
+import cartReducer, { addToCart, setQty, removeFromCart, setSelected, clearSelectedCart, clearCart, hydrateCart } from "../store/slices/cartSlice";
 
 describe("cartSlice", () => {
   const initialState = { items: [] };
@@ -37,5 +37,10 @@ describe("cartSlice", () => {
     const unselected = cartReducer(withItems, setSelected({ id: "p2", selected: false }));
     const state = cartReducer(unselected, clearSelectedCart());
     expect(state.items).toEqual([{ productId: "p2", qty: 3, selected: false }]);
+  });
+
+  it("restores a saved account cart", () => {
+    const state = cartReducer(initialState, hydrateCart([{ productId: "p1", qty: 2, selected: false }]));
+    expect(state.items).toEqual([{ productId: "p1", qty: 2, selected: false }]);
   });
 });

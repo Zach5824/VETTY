@@ -42,6 +42,10 @@ def test_password_auth_and_admin_catalog_protection(tmp_path, monkeypatch):
     saved_photo = client.patch('/api/auth/me', headers={'Authorization': f'Bearer {customer_token}'}, json={'profile_photo': photo})
     assert saved_photo.status_code == 200
     assert client.post('/api/auth/login', json={'email': 'jane@example.test', 'password': 'Password123!'}).get_json()['user']['profile_photo'] == photo
+    cart = [{'productId': '1', 'qty': 2, 'selected': False}]
+    saved_cart = client.put('/api/cart', headers={'Authorization': f'Bearer {customer_token}'}, json={'items': cart})
+    assert saved_cart.status_code == 200
+    assert client.get('/api/cart', headers={'Authorization': f'Bearer {customer_token}'}).get_json()['items'] == cart
     assert client.post('/api/products', json={'name': 'Food', 'price': 500, 'category': 'Food'}).status_code == 403
 
     admin_login = client.post('/api/auth/login', json={'email': 'admin@example.test', 'password': 'Password123!'})

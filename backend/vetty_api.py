@@ -193,11 +193,28 @@ def upgrade_local_schema():
         db.session.commit()
 
 
+def upgrade_user_schema():
+    """Apply additive user-profile upgrades on both SQLite and PostgreSQL."""
+    columns = {column['name'] for column in inspect(db.engine).get_columns('users')}
+    additions = []
+    if 'profile_photo' not in columns:
+        additions.append('ALTER TABLE users ADD COLUMN profile_photo TEXT')
+    if 'cart_items' not in columns:
+        additions.append('ALTER TABLE users ADD COLUMN cart_items JSON')
+    for statement in additions:
+        db.session.execute(text(statement))
+    if 'cart_items' not in columns:
+        db.session.execute(text("UPDATE users SET cart_items = '[]' WHERE cart_items IS NULL"))
+    if additions:
+        db.session.commit()
+
+
 def initialize_database():
     """Create the application schema and upgrade legacy local SQLite files."""
     db.create_all()
     if db.engine.dialect.name == 'sqlite':
         upgrade_local_schema()
+    upgrade_user_schema()
 
 
 with app.app_context():
@@ -436,6 +453,42 @@ def update_profile():
     user.profile_photo = profile_photo
     db.session.commit()
     return jsonify({'user': user.to_dict()})
+
+
+def valid_cart_items(items):
+    if not isinstance(items, list) or len(items) > 100:
+        return None
+    cleaned = []
+    for item in items:
+        if not isinstance(item, dict):
+            return None
+        product_id = item.get('productId')
+        qty = item.get('qty')
+        if not isinstance(product_id, str) or not product_id or isinstance(qty, bool):
+            return None
+        try:
+            qty = int(qty)
+        except (TypeError, ValueError):
+            return None
+        if qty < 1 or qty > 1000:
+            return None
+        cleaned.append({'productId': product_id, 'qty': qty, 'selected': bool(item.get('selected', True))})
+    return cleaned
+
+
+@app.route('/api/cart', methods=['GET', 'PUT'])
+@jwt_required()
+def account_cart():
+    """Load or save the signed-in customer's cart across sessions."""
+    user = current_user()
+    if request.method == 'GET':
+        return jsonify({'items': user.cart_items or []})
+    items = valid_cart_items((request.get_json(silent=True) or {}).get('items'))
+    if items is None:
+        return error('Cart items are invalid')
+    user.cart_items = items
+    db.session.commit()
+    return jsonify({'items': user.cart_items})
 
 
 def apply_fields(model, data, fields):

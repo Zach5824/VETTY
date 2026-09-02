@@ -75,6 +75,9 @@ Deploy the Flask backend as its own Vercel project from `backend/`; `app.py` is 
 DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/vetty
 JWT_SECRET_KEY=<a-long-random-secret>
 CORS_ORIGINS=https://your-frontend-domain.vercel.app
+INITIAL_ADMIN_EMAIL=admin@your-domain.example
+INITIAL_ADMIN_PASSWORD=<a-unique-12-plus-character-password>
+INITIAL_ADMIN_USERNAME=vetty-admin
 ```
 
 Deploy the frontend separately from the repository root and set its build-time `VITE_API_URL` to the backend deployment URL. This separation provides durable account storage; serverless local SQLite files are not suitable for production.
@@ -82,15 +85,17 @@ Deploy the frontend separately from the repository root and set its build-time `
 ### PostgreSQL production checklist
 
 1. Create a managed PostgreSQL database and copy its SQLAlchemy-compatible connection string, for example `postgresql+psycopg://USER:PASSWORD@HOST:5432/vetty`.
-2. Set that value as `DATABASE_URL` in the Vercel backend project's **Production** environment. Also set a long `JWT_SECRET_KEY` and set `CORS_ORIGINS` to the exact frontend origin.
-3. Create the schema and optional demo data once from a trusted machine with the same connection string:
+2. Set that value as `DATABASE_URL` in the Vercel backend project's **Production** environment. Also set a long `JWT_SECRET_KEY`, set `CORS_ORIGINS` to the exact frontend origin, and set `INITIAL_ADMIN_EMAIL` plus a unique `INITIAL_ADMIN_PASSWORD` of at least 12 characters.
+3. Deploy the backend once. It creates the schema and provisions the initial administrator from those variables. The bootstrap only creates/promotes that account; it never resets an existing password.
+4. Deploy the frontend with `VITE_API_URL` set to the backend origin (for example, `https://vetty-api.vercel.app`). Sign in at `/admin/login` using the initial admin email and password.
+5. Alternatively, create the schema and optional demo data once from a trusted machine with the same connection string:
 
 ```bash
 cd backend
 DATABASE_URL='postgresql+psycopg://USER:PASSWORD@HOST:5432/vetty' .venv/bin/python seed.py
 ```
 
-4. Change the demo administrator password before allowing access. Do not deploy with SQLite as the production database: a serverless filesystem is temporary and can lose accounts, bookings, orders, and payments.
+6. Change the demo administrator password before allowing access. Do not deploy with SQLite as the production database: a serverless filesystem is temporary and can lose accounts, bookings, orders, and payments.
 
 The seed command creates a local administrator: `admin@vetty.co.ke` / `ChangeMe123!`. Change that password before any deployment.
 

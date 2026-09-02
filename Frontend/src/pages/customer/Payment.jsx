@@ -53,7 +53,10 @@ export default function Payment() {
     if (!auth.token) throw new Error("Please sign in before paying.");
     const headers = { Authorization: `Bearer ${auth.token}` };
     const order = await api("/api/orders", {
-      method: "POST", token: auth.token, body: JSON.stringify({ total_amount: total }),
+      method: "POST", token: auth.token, body: JSON.stringify({
+        total_amount: total,
+        items: items.map((item) => ({ productId: item.productId, qty: item.qty })),
+      }),
     });
     return { order, headers };
   };

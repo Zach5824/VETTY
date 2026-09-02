@@ -82,7 +82,24 @@ class Order(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     total_amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(20), default='pending', nullable=False)
+    # Snapshot of the purchased product IDs and quantities. This lets the
+    # admin workspace describe an order without relying on browser-only state.
+    items = db.Column(db.JSON, nullable=False, default=list)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self, include_customer=False):
+        data = {
+            'id': self.id,
+            'user_id': self.user_id,
+            'total_amount': self.total_amount,
+            'status': self.status,
+            'items': self.items or [],
+            'created_at': self.created_at.strftime("%a, %d %b %Y %H:%M:%S GMT"),
+        }
+        if include_customer:
+            user = self.user or db.session.get(User, self.user_id)
+            data['customer'] = user.username if user else 'Unknown customer'
+        return data
 
 
 class Payment(db.Model):

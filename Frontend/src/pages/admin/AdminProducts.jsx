@@ -65,6 +65,14 @@ export default function AdminProducts() {
     } catch (requestError) { setError(requestError.message); }
   };
 
+  const removeService = async (id) => {
+    try {
+      setError("");
+      await api(`/api/services/${id}`, { method: "DELETE", token: auth.token });
+      dispatch(deleteService(id));
+    } catch (requestError) { setError(requestError.message); }
+  };
+
   return (
     <div className="min-h-[100dvh] flex flex-col">
       <div className="flex items-center justify-between px-5 h-16 shrink-0" style={{ background: C.maroon }}>
@@ -112,7 +120,7 @@ export default function AdminProducts() {
               <p className="text-xs font-semibold truncate" style={{ color: C.charcoal }}>{s.name}</p>
               <p className="text-xs font-bold" style={{ color: C.maroon }}>KSh {s.price.toLocaleString()} · {s.duration}</p>
             </div>
-            <button onClick={() => dispatch(deleteService(s.id))}><Trash2 size={15} color={C.danger} /></button>
+            <button onClick={() => removeService(s.id)} title="Delete service"><Trash2 size={15} color={C.danger} /></button>
           </div>
         ))}
         <Btn full variant="ghost" icon={Plus} onClick={createService}>

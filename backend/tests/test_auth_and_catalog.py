@@ -80,3 +80,24 @@ def test_booking_ownership_and_admin_catalog_crud(tmp_path, monkeypatch):
     assert client.patch(f"/api/zones/{zone['id']}", headers={'Authorization': f'Bearer {owner_token}'}, json={'fee': 1}).status_code == 403
     assert client.patch(f"/api/zones/{zone['id']}", headers=admin_headers, json={'fee': 550}).get_json()['fee'] == 550.0
     assert client.delete(f"/api/zones/{zone['id']}", headers=admin_headers).status_code == 204
+
+
+def test_admin_order_fulfilment_is_persistent_and_protected(tmp_path, monkeypatch):
+    module = load_app(tmp_path, monkeypatch)
+    client = module.app.test_client()
+    admin_token = client.post('/api/auth/login', json={'email': 'admin@example.test', 'password': 'Password123!'}).get_json()['access_token']
+    customer_token = client.post('/api/auth/signup', json={'username': 'buyer', 'email': 'buyer@example.test', 'password': 'Password123!'}).get_json()['access_token']
+    order = client.post('/api/orders', headers={'Authorization': f'Bearer {customer_token}'}, json={
+        'total_amount': 1450,
+        'items': [{'productId': '1', 'qty': 1}],
+    })
+    assert order.status_code == 201
+    order_id = order.get_json()['id']
+    assert order.get_json()['items'] == [{'productId': '1', 'qty': 1}]
+    assert client.get('/api/admin/orders', headers={'Authorization': f'Bearer {customer_token}'}).status_code == 403
+    orders = client.get('/api/admin/orders', headers={'Authorization': f'Bearer {admin_token}'}).get_json()
+    assert orders[0]['id'] == order_id
+    assert orders[0]['customer'] == 'buyer'
+    updated = client.patch(f'/api/admin/orders/{order_id}', headers={'Authorization': f'Bearer {admin_token}'}, json={'status': 'approved'})
+    assert updated.status_code == 200
+    assert updated.get_json()['status'] == 'approved'

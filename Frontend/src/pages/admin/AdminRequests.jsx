@@ -1,20 +1,49 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { Check, CircleCheckBig, LogOut, X } from "lucide-react";
 import { logout } from "../../store/slices/authSlice";
-import { approveOrder, rejectOrder, approveBooking, rejectBooking } from "../../store/slices/ordersSlice";
 import Badge from "../../components/Badge";
 import Btn from "../../components/Btn";
 import AdminNav from "../../components/AdminNav";
 import { C } from "../../theme/colors";
+import { api } from "../../lib/api";
 
 export default function AdminRequests() {
   const [tab, setTab] = useState("orders");
-  const orders = useSelector((s) => s.orders.orders);
-  const bookings = useSelector((s) => s.orders.bookings);
+  const auth = useSelector((s) => s.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [orders, setOrders] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [error, setError] = useState("");
+  const [updating, setUpdating] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([api("/api/admin/orders", { token: auth.token }), api("/api/bookings", { token: auth.token })])
+      .then(([orderData, bookingData]) => { if (active) { setOrders(orderData); setBookings(bookingData); } })
+      .catch((requestError) => { if (active) setError(requestError.message); });
+    return () => { active = false; };
+  }, [auth.token]);
+
+  const updateOrder = async (id, status) => {
+    try {
+      setError(""); setUpdating(`order-${id}`);
+      const order = await api(`/api/admin/orders/${id}`, { method: "PATCH", token: auth.token, body: JSON.stringify({ status }) });
+      setOrders((current) => current.map((item) => item.id === id ? order : item));
+    } catch (requestError) { setError(requestError.message); }
+    finally { setUpdating(null); }
+  };
+
+  const updateBooking = async (id, status) => {
+    try {
+      setError(""); setUpdating(`booking-${id}`);
+      const booking = await api(`/api/bookings/${id}`, { method: "PATCH", token: auth.token, body: JSON.stringify({ status }) });
+      setBookings((current) => current.map((item) => item.id === id ? booking : item));
+    } catch (requestError) { setError(requestError.message); }
+    finally { setUpdating(null); }
+  };
 
   const pendingOrders = orders.filter((o) => o.status === "pending");
   const pendingBookings = bookings.filter((b) => b.status === "pending");
@@ -34,17 +63,18 @@ export default function AdminRequests() {
         </button>
       </div>
       <div className="content-container flex-1 overflow-y-auto px-5 py-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 content-start">
+        {error && <p role="alert" className="text-xs sm:col-span-2 xl:col-span-3" style={{ color: C.danger }}>{error}</p>}
         {tab === "orders" && pendingOrders.map((o) => (
           <div key={o.id} className="p-4 rounded-2xl flex flex-col gap-2" style={{ border: `1px solid ${C.lightGray}` }}>
             <div className="flex justify-between items-center">
               <p className="text-sm font-bold" style={{ color: C.charcoal }}>#{o.id}</p>
               <Badge>Pending</Badge>
             </div>
-            <p className="text-xs" style={{ color: C.gray }}>{o.customer} · {o.label}</p>
-            <p className="text-base font-bold" style={{ color: C.maroon }}>KSh {o.total.toLocaleString()}</p>
+            <p className="text-xs" style={{ color: C.gray }}>{o.customer} · {(o.items || []).length || 1} item{(o.items || []).length === 1 ? "" : "s"}</p>
+            <p className="text-base font-bold" style={{ color: C.maroon }}>KSh {Number(o.total_amount).toLocaleString()}</p>
             <div className="flex gap-2">
-              <Btn small variant="success" full icon={Check} onClick={() => dispatch(approveOrder(o.id))}>Approve</Btn>
-              <Btn small variant="danger" full icon={X} onClick={() => dispatch(rejectOrder(o.id))}>Reject</Btn>
+              <Btn small variant="success" full disabled={updating === `order-${o.id}`} icon={Check} onClick={() => updateOrder(o.id, "approved")}>Approve</Btn>
+              <Btn small variant="danger" full disabled={updating === `order-${o.id}`} icon={X} onClick={() => updateOrder(o.id, "rejected")}>Reject</Btn>
             </div>
           </div>
         ))}
@@ -55,11 +85,11 @@ export default function AdminRequests() {
               <p className="text-sm font-bold" style={{ color: C.charcoal }}>{b.serviceName}</p>
               <Badge>Pending</Badge>
             </div>
-            <p className="text-xs" style={{ color: C.gray }}>{b.customer} · Pet: {b.petName} · {b.date}, {b.time}</p>
+            <p className="text-xs" style={{ color: C.gray }}>{b.customer} · Pet: {b.petName} · {b.date}</p>
             <p className="text-base font-bold" style={{ color: C.maroon }}>KSh {b.price.toLocaleString()}</p>
             <div className="flex gap-2">
-              <Btn small variant="success" full icon={Check} onClick={() => dispatch(approveBooking(b.id))}>Approve</Btn>
-              <Btn small variant="danger" full icon={X} onClick={() => dispatch(rejectBooking(b.id))}>Reject</Btn>
+              <Btn small variant="success" full disabled={updating === `booking-${b.id}`} icon={Check} onClick={() => updateBooking(b.id, "approved")}>Approve</Btn>
+              <Btn small variant="danger" full disabled={updating === `booking-${b.id}`} icon={X} onClick={() => updateBooking(b.id, "rejected")}>Reject</Btn>
             </div>
           </div>
         ))}

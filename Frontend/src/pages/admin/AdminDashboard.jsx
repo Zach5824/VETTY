@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { Hand, LogOut } from "lucide-react";
@@ -6,19 +6,29 @@ import { logout } from "../../store/slices/authSlice";
 import StatCard from "../../components/StatCard";
 import AdminNav from "../../components/AdminNav";
 import { C, serif } from "../../theme/colors";
+import { api } from "../../lib/api";
 
 export default function AdminDashboard() {
   const auth = useSelector((s) => s.auth);
-  const orders = useSelector((s) => s.orders.orders);
-  const bookings = useSelector((s) => s.orders.bookings);
   const products = useSelector((s) => s.catalog.products);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [orders, setOrders] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([api("/api/admin/orders", { token: auth.token }), api("/api/bookings", { token: auth.token })])
+      .then(([orderData, bookingData]) => { if (active) { setOrders(orderData); setBookings(bookingData); } })
+      .catch((requestError) => { if (active) setError(requestError.message); });
+    return () => { active = false; };
+  }, [auth.token]);
 
   const pendingOrders = orders.filter((o) => o.status === "pending").length;
   const pendingBookings = bookings.filter((b) => b.status === "pending").length;
   const lowStock = products.filter((p) => p.stock <= p.threshold).length;
-  const sales = orders.reduce((s, o) => s + o.total, 0);
+  const sales = orders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
 
   return (
     <div className="min-h-[100dvh] flex flex-col">
@@ -28,6 +38,7 @@ export default function AdminDashboard() {
       </div>
       <div className="content-container flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
         <p className="text-base font-bold flex items-center gap-2" style={{ fontFamily: serif, color: C.maroon }}>Welcome back, {auth.name} <Hand size={17} /></p>
+        {error && <p role="alert" className="text-xs" style={{ color: C.danger }}>{error}</p>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <StatCard label="Total sales" value={`KSh ${sales.toLocaleString()}`} sub="Across all orders" />
           <StatCard label="Orders" value={orders.length} sub={`${pendingOrders} pending approval`} subColor={C.warning} />
@@ -46,8 +57,8 @@ export default function AdminDashboard() {
         <div className="flex flex-col">
           {orders.slice(0, 3).map((o) => (
             <div key={o.id} className="flex justify-between py-2.5 border-b" style={{ borderColor: C.lightGray }}>
-              <span className="text-xs" style={{ color: C.charcoal }}>Order #{o.id} — {o.label}</span>
-              <span className="text-[11px]" style={{ color: C.gray }}>{o.when}</span>
+              <span className="text-xs" style={{ color: C.charcoal }}>Order #{o.id} — {(o.items || []).length || 1} item{(o.items || []).length === 1 ? "" : "s"}</span>
+              <span className="text-[11px]" style={{ color: C.gray }}>{o.created_at}</span>
             </div>
           ))}
         </div>

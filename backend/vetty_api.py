@@ -209,12 +209,45 @@ def upgrade_user_schema():
         db.session.commit()
 
 
+def upgrade_order_schema():
+    """Add the order item snapshot required by the persistent admin view."""
+    columns = {column['name'] for column in inspect(db.engine).get_columns('orders')}
+    if 'items' not in columns:
+        db.session.execute(text('ALTER TABLE orders ADD COLUMN items JSON'))
+        db.session.execute(text("UPDATE orders SET items = '[]' WHERE items IS NULL"))
+        db.session.commit()
+
+
+def provision_initial_admin():
+    """Create the first administrator from deployment environment variables.
+
+    This intentionally never changes an existing account or its password. It
+    makes a fresh production database usable without committing demo credentials.
+    """
+    email = str(os.getenv('INITIAL_ADMIN_EMAIL') or '').strip().lower()
+    password = str(os.getenv('INITIAL_ADMIN_PASSWORD') or '')
+    if not email and not password:
+        return
+    if '@' not in email or len(password) < 12:
+        raise RuntimeError('INITIAL_ADMIN_EMAIL and a 12+ character INITIAL_ADMIN_PASSWORD are required together')
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        username = str(os.getenv('INITIAL_ADMIN_USERNAME') or email.split('@', 1)[0]).strip()[:80]
+        db.session.add(User(username=username, email=email, role='admin', password_hash=generate_password_hash(password)))
+        db.session.commit()
+    elif user.role != 'admin':
+        user.role = 'admin'
+        db.session.commit()
+
+
 def initialize_database():
     """Create the application schema and upgrade legacy local SQLite files."""
     db.create_all()
     if db.engine.dialect.name == 'sqlite':
         upgrade_local_schema()
     upgrade_user_schema()
+    upgrade_order_schema()
+    provision_initial_admin()
 
 
 with app.app_context():
@@ -255,6 +288,29 @@ def validated_order_amount(amount):
     if not result.is_finite() or result <= 0:
         raise ValueError('total_amount must be greater than zero')
     return result
+
+
+def validated_order_items(items):
+    """Persist only the product identifiers and quantities needed for fulfilment."""
+    if items is None:
+        return []
+    if not isinstance(items, list) or len(items) > 100:
+        raise ValueError('items must be a list with no more than 100 entries')
+    cleaned = []
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError('each order item must be an object')
+        product_id = item.get('productId')
+        quantity = item.get('qty')
+        try:
+            product_id = int(product_id)
+            quantity = int(quantity)
+        except (TypeError, ValueError):
+            raise ValueError('each order item needs a valid productId and qty')
+        if product_id < 1 or quantity < 1 or quantity > 1000:
+            raise ValueError('each order item needs a positive productId and qty')
+        cleaned.append({'productId': str(product_id), 'qty': quantity})
+    return cleaned
 
 
 def normalize_kenyan_phone(phone):
@@ -1001,25 +1057,21 @@ def create_order():
         return error('total_amount is required')
     try:
         total_amount = validated_order_amount(total_amount)
+        items = validated_order_items(data.get('items'))
     except ValueError as exc:
         return error(str(exc))
 
     new_order = Order(
         user_id=int(current_user_id),
         total_amount=float(total_amount),
-        status='pending'
+        status='pending',
+        items=items,
     )
     
     db.session.add(new_order)
     db.session.commit()
     
-    return jsonify({
-        'id': new_order.id,
-        'user_id': new_order.user_id,
-        'total_amount': new_order.total_amount,
-        'status': new_order.status,
-        'created_at': new_order.created_at.strftime("%a, %d %b %Y %H:%M:%S GMT")
-    }), 201
+    return jsonify(new_order.to_dict()), 201
 
 @app.route('/api/orders', methods=['GET'])
 @jwt_required()
@@ -1054,14 +1106,33 @@ def get_user_orders():
     """
     current_user_id = get_jwt_identity()
     orders = Order.query.filter_by(user_id=int(current_user_id)).order_by(Order.created_at.desc()).all()
-    
-    return jsonify([{
-        'id': o.id,
-        'user_id': o.user_id,
-        'total_amount': o.total_amount,
-        'status': o.status,
-        'created_at': o.created_at.strftime("%a, %d %b %Y %H:%M:%S GMT")
-    } for o in orders]), 200
+    return jsonify([order.to_dict() for order in orders]), 200
+
+
+@app.route('/api/admin/orders', methods=['GET'])
+@jwt_required()
+def admin_orders():
+    """Return all orders for staff fulfilment, including the customer name."""
+    auth_error = admin_required()
+    if auth_error: return auth_error
+    orders = Order.query.order_by(Order.created_at.desc()).all()
+    return jsonify([order.to_dict(include_customer=True) for order in orders])
+
+
+@app.route('/api/admin/orders/<int:order_id>', methods=['PATCH'])
+@jwt_required()
+def admin_order_detail(order_id):
+    """Update an order's fulfilment status as an administrator."""
+    auth_error = admin_required()
+    if auth_error: return auth_error
+    order = db.session.get(Order, order_id)
+    if not order: return error('Order not found', 404)
+    status = str((request.get_json(silent=True) or {}).get('status') or '').strip().lower()
+    if status not in {'pending', 'approved', 'rejected', 'out_for_delivery', 'delivered'}:
+        return error('status must be pending, approved, rejected, out_for_delivery, or delivered')
+    order.status = status
+    db.session.commit()
+    return jsonify(order.to_dict(include_customer=True))
 
 
 # Payment providers ---------------------------------------------------------

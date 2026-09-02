@@ -21,7 +21,7 @@ export default function AdminLogin() {
       setError("");
       const { user, access_token } = await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
       if (user.role !== "admin") throw new Error("This account is not an administrator.");
-      dispatch(login({ role: user.role, name: user.username, email: user.email, token: access_token }));
+      dispatch(login({ role: user.role, name: user.username, email: user.email, token: access_token, profilePhoto: user.profile_photo }));
       navigate("/admin/dashboard");
     } catch (requestError) { setError(requestError.message); }
   };

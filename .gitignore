@@ -18,3 +18,4 @@ __pycache__/
 node_modules/
 Frontend/node_modules/
 Frontend/dist/
+.env*

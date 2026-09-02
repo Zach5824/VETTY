@@ -178,6 +178,8 @@ def upgrade_local_schema():
         upgrades.append('ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)')
     if 'role' not in columns:
         upgrades.append("ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'customer'")
+    if 'profile_photo' not in columns:
+        upgrades.append('ALTER TABLE users ADD COLUMN profile_photo TEXT')
     for statement in upgrades:
         db.session.execute(text(statement))
     if 'email' not in columns:
@@ -186,16 +188,15 @@ def upgrade_local_schema():
         db.session.commit()
 
 
-def initialize_local_database():
-    """Make a fresh or legacy local SQLite install usable on first request."""
-    if db.engine.dialect.name != 'sqlite':
-        return
+def initialize_database():
+    """Create the application schema and upgrade legacy local SQLite files."""
     db.create_all()
-    upgrade_local_schema()
+    if db.engine.dialect.name == 'sqlite':
+        upgrade_local_schema()
 
 
 with app.app_context():
-    initialize_local_database()
+    initialize_database()
 
 
 def required_settings(*names):
@@ -413,6 +414,22 @@ def me():
         description: Unauthorized - token missing or invalid
     """
     user = current_user()
+    return jsonify({'user': user.to_dict()})
+
+
+@app.route('/api/auth/me', methods=['PATCH'])
+@jwt_required()
+def update_profile():
+    """Save the current customer's preferred profile photo."""
+    user = current_user()
+    data = request.get_json(silent=True) or {}
+    profile_photo = data.get('profile_photo')
+    if not isinstance(profile_photo, str) or not profile_photo.startswith('data:image/'):
+        return error('A valid image is required')
+    if len(profile_photo) > 3 * 1024 * 1024:
+        return error('Profile photo is too large')
+    user.profile_photo = profile_photo
+    db.session.commit()
     return jsonify({'user': user.to_dict()})
 
 

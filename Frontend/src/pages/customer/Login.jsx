@@ -20,7 +20,10 @@ export default function Login() {
     try {
       setError(""); setIsSubmitting(true);
       const { user, access_token } = await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email: email.trim().toLowerCase(), password: pw }) });
-      dispatch(login({ role: user.role, name: user.username, email: user.email, token: access_token }));
+      if (user.role === "admin") {
+        throw new Error("Please use Admin sign in from the loading page.");
+      }
+      dispatch(login({ role: user.role, name: user.username, email: user.email, token: access_token, profilePhoto: user.profile_photo }));
       navigate("/home");
     } catch (requestError) {
       setError(requestError.message);

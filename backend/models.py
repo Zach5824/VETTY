@@ -12,10 +12,11 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=True)
     password_hash = db.Column(db.String(255), nullable=True)
     role = db.Column(db.String(20), nullable=False, default='customer')
+    profile_photo = db.Column(db.Text, nullable=True)
     orders = db.relationship('Order', backref='user', lazy=True)
 
     def to_dict(self):
-        return {'id': self.id, 'username': self.username, 'email': self.email, 'role': self.role}
+        return {'id': self.id, 'username': self.username, 'email': self.email, 'role': self.role, 'profile_photo': self.profile_photo}
 
 
 class Product(db.Model):

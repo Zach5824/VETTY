@@ -27,7 +27,7 @@ export default function Register() {
     try {
       setError(""); setIsSubmitting(true);
       const { user, access_token } = await api("/api/auth/signup", { method: "POST", body: JSON.stringify({ username, email: normalizedEmail, password: pw, phone: phone.trim() }) });
-      dispatch(login({ role: user.role, name: user.username, email: user.email, token: access_token }));
+      dispatch(login({ role: user.role, name: user.username, email: user.email, token: access_token, profilePhoto: user.profile_photo }));
       navigate("/home");
     } catch (requestError) {
       setError(requestError.message);

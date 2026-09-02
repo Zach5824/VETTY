@@ -33,6 +33,11 @@ def test_password_auth_and_admin_catalog_protection(tmp_path, monkeypatch):
     signup = client.post('/api/auth/signup', json={'username': 'jane', 'email': 'jane@example.test', 'password': 'Password123!'})
     assert signup.status_code == 201
     customer_token = signup.get_json()['access_token']
+    # A later, separate login must use the credentials persisted at signup.
+    customer_login = client.post('/api/auth/login', json={'email': 'jane@example.test', 'password': 'Password123!'})
+    assert customer_login.status_code == 200
+    assert customer_login.get_json()['user']['username'] == 'jane'
+    assert client.post('/api/auth/login', json={'email': 'jane@example.test', 'password': 'wrong-password'}).status_code == 401
     assert client.post('/api/products', json={'name': 'Food', 'price': 500, 'category': 'Food'}).status_code == 403
 
     admin_login = client.post('/api/auth/login', json={'email': 'admin@example.test', 'password': 'Password123!'})

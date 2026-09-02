@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const emptyState = { loggedIn: false, role: null, name: "", email: "", token: null };
+const emptyState = { loggedIn: false, role: null, name: "", email: "", token: null, profilePhoto: "" };
 const initialState = JSON.parse(localStorage.getItem("vetty-session") || "null") || emptyState;
 
 const authSlice = createSlice({
@@ -13,6 +13,11 @@ const authSlice = createSlice({
       state.name = action.payload.name;
       state.email = action.payload.email || "";
       state.token = action.payload.token || null;
+      state.profilePhoto = action.payload.profilePhoto || "";
+      localStorage.setItem("vetty-session", JSON.stringify(state));
+    },
+    setProfilePhoto(state, action) {
+      state.profilePhoto = action.payload || "";
       localStorage.setItem("vetty-session", JSON.stringify(state));
     },
     logout() {
@@ -21,5 +26,5 @@ const authSlice = createSlice({
     },
   },
 });
-export const { login, logout } = authSlice.actions;
+export const { login, logout, setProfilePhoto } = authSlice.actions;
 export default authSlice.reducer;

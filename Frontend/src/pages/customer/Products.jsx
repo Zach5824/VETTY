@@ -39,20 +39,23 @@ export default function Products() {
       <div className="content-container flex-1 overflow-y-auto px-5 pb-4">
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
           {list.map((p) => (
-            <div key={p.id} className="rounded-2xl overflow-hidden bg-white" style={{ border: `1px solid ${C.lightGray}` }}>
+            <div key={p.id} className="group rounded-3xl overflow-hidden bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg" style={{ border: `1px solid ${C.lightGray}` }}>
               <button className="w-full text-left" onClick={() => navigate(`/products/${p.id}`)}>
-                <ImgBox h={92} r={0} icon={p.icon} name={p.name} />
-                <div className="p-3">
-                  <p className="text-xs font-semibold line-clamp-2" style={{ color: C.charcoal }}>{p.name}</p>
-                  {p.stock === 0 && <p className="text-[10px] font-semibold mt-1" style={{ color: C.danger }}>Out of stock</p>}
+                <div className="relative">
+                  <ImgBox h={132} r={0} icon={p.icon} name={p.name} />
+                  <div className="absolute inset-x-0 bottom-0 h-12" style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.35))" }} />
+                  {p.stock === 0 && <span className="absolute top-2 left-2 rounded-full px-2 py-1 text-[9px] font-bold text-white" style={{ background: C.danger }}>OUT OF STOCK</span>}
+                </div>
+                <div className="px-3 pt-3">
+                  <p className="text-xs font-bold leading-5 line-clamp-2 min-h-10" style={{ color: C.charcoal }}>{p.name}</p>
                 </div>
               </button>
-              <div className="flex items-center justify-between px-3 pb-3">
+              <div className="flex items-center justify-between px-3 pb-3 pt-1">
                 <span className="text-sm font-bold" style={{ color: C.maroon }}>KSh {p.price.toLocaleString()}</span>
                 <button
                   disabled={p.stock === 0}
                   onClick={() => { dispatch(addToCart({ id: p.id, qty: 1 })); dispatch(showToast("Added to cart")); }}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-30"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm transition-transform active:scale-95 disabled:opacity-30"
                   style={{ background: C.gold }}
                 >
                   <Plus size={14} color={C.maroonDark} />

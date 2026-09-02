@@ -16,8 +16,8 @@ export default function Services() {
         <p className="text-sm font-semibold" style={{ color: C.maroon, fontFamily: serif }}>Book a vet service near you</p>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 mt-3">
         {services.map((s) => (
-          <button key={s.id} onClick={() => navigate(`/booking/${s.id}`)} className="flex items-center gap-3 p-3 rounded-2xl text-left" style={{ background: C.sectionBg }}>
-            <ImgBox h={56} r={12} icon={s.icon} name={s.name} className="w-14" />
+          <button key={s.id} onClick={() => navigate(`/booking/${s.id}`)} className="flex items-center gap-3 p-3 rounded-3xl text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md" style={{ background: "#fff", border: `1px solid ${C.lightGray}` }}>
+            <ImgBox h={72} r={16} icon={s.icon} name={s.name} className="w-20" />
             <div className="flex-1">
               <p className="text-sm font-semibold" style={{ color: C.charcoal }}>{s.name}</p>
               <p className="text-[11px] mt-0.5" style={{ color: C.gray }}>{s.desc}</p>
